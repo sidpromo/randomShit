@@ -1,0 +1,29 @@
+Declare @products varchar(200) = '1|20|3|343|44|6|8765'
+Declare @individual varchar(20) = null
+DECLARE @Filters table(
+	factory varchar(30)
+)
+
+WHILE LEN(@products) > 0
+BEGIN
+    IF PATINDEX('%|%', @products) > 0
+    BEGIN
+        SET @individual = SUBSTRING(@products,
+                                    0,
+                                    PATINDEX('%|%', @products))
+
+        INSERT INTO @Filters (factory) VALUES (@individual)
+
+        SET @products = SUBSTRING(@products,
+                                  LEN(@individual + '|') + 1,
+                                  LEN(@products))
+    END
+    ELSE
+    BEGIN
+        SET @individual = @products
+        SET @products = NULL
+        INSERT INTO @Filters (factory) VALUES (@individual)
+    END
+END
+
+SELECT * FROM @Filters
