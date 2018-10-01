@@ -1,0 +1,53 @@
+DECLARE @sysNum NVARCHAR(max)='TPT-17-0001';
+
+with Down as
+	(  
+	  select T.*
+	  from Plans as T
+	  where T.PlanDocumentSystemNumber LIKE @sysNum
+	  union all
+	  select T.*
+	  from Plans as T
+	    inner join Down as D
+	    on T.AncestorPlanID = D.Id
+	),
+	Up as
+	(  
+	  select T.*
+	  from Plans as T
+	  where T.PlanDocumentSystemNumber LIKE @sysNum
+	  union all
+	  select T.*
+	  from Plans as T
+	    inner join Up as U
+	    on T.Id = U.AncestorPlanID
+	)
+	
+	select 
+		U.ID
+		,COALESCE(CAST(AncestorPlanID AS varchar),'-') AncestorPlanID
+		,Name
+		,PlanDocumentSystemNumber
+		,Deadline
+		,Comment
+		,ps.DisplayName as PlanStatus
+		,URL
+		,(C.Value + '/PlanBase/' + CONVERT(NVARCHAR(10), U.ID)) AS ''
+	from Up U
+		inner join PlanStatuses ps on U.PlanStatusID=ps.ID
+		left join  [Configurations] C ON c.[Key] = 'AppDomain'
+	union
+	select 
+		D.ID
+		,COALESCE(CAST(AncestorPlanID AS varchar),'-') AncestorPlanID
+		,Name
+		,PlanDocumentSystemNumber
+		,Deadline
+		,Comment
+		,ps.DisplayName as PlanStatus
+		,URL
+		,(C.Value + '/PlanBase/' + CONVERT(NVARCHAR(10), D.ID)) AS ''
+	from Down D
+		inner join PlanStatuses ps on D.PlanStatusID=ps.ID
+		left join  [Configurations] C ON c.[Key] = 'AppDomain'
+	order by ID
