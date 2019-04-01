@@ -1,0 +1,30 @@
+CREATE VIEW [dbo].[DocumentTaskView]
+	AS 
+SELECT 
+	dt.DocumentTaskId TaskId,
+	tt.TaskTypeName,
+	d.DocumentCode,
+	d.DocumentWorkflowStatus DocumentWorflowCodeStatusName,
+	dt.CreatedOn,
+	dt.CompletedOn TaskEnd,
+	dr.ReasonName DecisionReasonName,
+	dt.DocumentId,
+	history.DocumentStatusHistoryId,
+	dt.TaskStatusId,
+	COALESCE(u.DisplayName,sc.[Name]) [Owner],
+	dt.UserId,
+	dt.SOPCenterId
+FROM dbo.DocumentTask dt
+LEFT JOIN dbo.ActiveNowUserNamesView u ON dt.UserId=u.UserId
+LEFT JOIN dbo.SOPCenter sc ON dt.SOPCenterId=sc.SOPCenterId
+INNER JOIN dbo.TaskType tt ON dt.TaskTypeId=tt.TaskTypeId
+INNER JOIN dbo.DocumentListView d ON dt.DocumentId=d.DocumentId
+LEFT JOIN
+     (SELECT DocumentStatusHistory.*,
+             lead(CreatedOn) OVER (PARTITION BY DocumentId ORDER BY CreatedOn) AS nextTS
+      FROM DocumentStatusHistory
+    ) history
+    ON dt.DocumentId = history.DocumentId and
+       dt.CreatedOn >= history.CreatedOn and
+       dt.CreatedOn <= coalesce(nextTS, dt.CreatedOn)
+LEFT JOIN dbo.DecisionReason dr on history.DecisionReasonId=dr.DecisionReasonId
